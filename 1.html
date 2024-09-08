@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Level 1</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        #game {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #player, #monster {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+        }
+
+        #player {
+            background-image: url('player.png');
+            background-size: cover;
+            bottom: 20px;
+            left: calc(50% - 25px);
+            transform-origin: center;
+        }
+
+        #monster {
+            background-image: url('monster.png');
+            background-size: cover;
+        }
+
+        .bullet {
+            position: absolute;
+            width: 5px;
+            height: 20px;
+            background-color: yellow;
+        }
+    </style>
+</head>
+<body>
+    <div id="game">
+        <div id="player"></div>
+        <div id="monster"></div>
+    </div>
+    <script>
+        const player = document.getElementById('player');
+        const monster = document.getElementById('monster');
+        const game = document.getElementById('game');
+        let monsterHealth = 20;
+        let gameOver = false;
+        let playerSpeed = 5;
+        let keys = {};
+        let playerAngle = 0;
+
+        function moveMonster() {
+            if (gameOver) return;
+            const playerRect = player.getBoundingClientRect();
+            const monsterRect = monster.getBoundingClientRect();
+            const dx = playerRect.left - monsterRect.left;
+            const dy = playerRect.top - monsterRect.top;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const moveX = (dx / distance) * 2;
+            const moveY = (dy / distance) * 2;
+
+            monster.style.left = `${monster.offsetLeft + moveX}px`;
+            monster.style.top = `${monster.offsetTop + moveY}px`;
+        }
+
+        function shootBullet() {
+            const bullet = document.createElement('div');
+            bullet.classList.add('bullet');
+            bullet.style.left = `${player.offsetLeft + 22.5}px`;
+            bullet.style.top = `${player.offsetTop + 22.5}px`;
+            game.appendChild(bullet);
+
+            const angleRad = (playerAngle - 90) * (Math.PI / 180);
+            const bulletSpeed = 10;
+            const interval = setInterval(() => {
+                bullet.style.left = `${parseInt(bullet.style.left) + bulletSpeed * Math.cos(angleRad)}px`;
+                bullet.style.top = `${parseInt(bullet.style.top) + bulletSpeed * Math.sin(angleRad)}px`;
+
+                if (bullet.offsetTop < 0 || bullet.offsetTop > window.innerHeight || bullet.offsetLeft < 0 || bullet.offsetLeft > window.innerWidth) {
+                    bullet.remove();
+                    clearInterval(interval);
+                } else if (bullet.offsetTop < (monster.offsetTop + 50) && bullet.offsetLeft > monster.offsetLeft && bullet.offsetLeft < (monster.offsetLeft + 50)) {
+                    bullet.remove();
+                    clearInterval(interval);
+                    hitMonster();
+                }
+            }, 30);
+        }
+
+        function hitMonster() {
+            monsterHealth -= 1;
+            if (monsterHealth <= 0) {
+                alert('You win!');
+                window.location.href = '2.html';
+            }
+        }
+
+        function checkCollision() {
+            if (gameOver) return;
+            const playerRect = player.getBoundingClientRect();
+            const monsterRect = monster.getBoundingClientRect();
+            if (playerRect.left < monsterRect.right &&
+                playerRect.right > monsterRect.left &&
+                playerRect.top < monsterRect.bottom &&
+                playerRect.bottom > monsterRect.top) {
+                alert('Game Over');
+                gameOver = true;
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            const playerRect = player.getBoundingClientRect();
+            const centerX = playerRect.left + playerRect.width / 2;
+            const centerY = playerRect.top + playerRect.height / 2;
+            const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+            playerAngle = angle * (180 / Math.PI) + 90;
+            player.style.transform = `rotate(${playerAngle}deg)`;
+        });
+
+        function movePlayer() {
+            if (keys['ArrowUp']) {
+                player.style.top = `${player.offsetTop - playerSpeed}px`;
+            }
+            if (keys['ArrowDown']) {
+                player.style.top = `${player.offsetTop + playerSpeed}px`;
+            }
+            if (keys['ArrowLeft']) {
+                player.style.left = `${player.offsetLeft - playerSpeed}px`;
+            }
+            if (keys['ArrowRight']) {
+                player.style.left = `${player.offsetLeft + playerSpeed}px`;
+            }
+            if (keys['Space']) {
+                shootBullet();
+                keys['Space'] = false; // Prevents continuous shooting when holding down space
+            }
+        }
+
+        setInterval(moveMonster, 30);
+        setInterval(checkCollision, 100);
+        setInterval(movePlayer, 30);
+    </script>
+</body>
+</html>

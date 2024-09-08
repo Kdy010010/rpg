@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Level 4</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: Arial, sans-serif;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #game {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #player {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-image: url('player.png');
+            background-size: cover;
+            transform-origin: center;
+        }
+
+        .enemy {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-image: url('monster.png');
+            background-size: cover;
+        }
+
+        .structure {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background-color: gray;
+        }
+
+        .item {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-color: green;
+        }
+
+        .bullet {
+            position: absolute;
+            width: 5px;
+            height: 20px;
+            background-color: yellow;
+        }
+
+        .message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="game">
+        <div id="player" style="top: 400px; left: 200px;"></div>
+        <div class="enemy" id="enemy1" style="top: 100px; left: 800px;"></div>
+        <div class="enemy" id="enemy2" style="top: 300px; left: 800px;"></div>
+        <div class="enemy" id="enemy3" style="top: 500px; left: 800px;"></div>
+        <div class="structure" style="top: 200px; left: 400px;"></div>
+        <div class="structure" style="top: 400px; left: 600px;"></div>
+        <div class="item" id="healthPack" style="top: 350px; left: 500px;"></div>
+        <div id="winMessage" class="message">You Win!</div>
+        <div id="loseMessage" class="message">Game Over</div>
+    </div>
+    <script>
+        const player = document.getElementById('player');
+        const enemies = document.querySelectorAll('.enemy');
+        const structures = document.querySelectorAll('.structure');
+        const item = document.getElementById('healthPack');
+        const game = document.getElementById('game');
+        const winMessage = document.getElementById('winMessage');
+        const loseMessage = document.getElementById('loseMessage');
+        let gameOver = false;
+        let playerSpeed = 5;
+        let keys = {};
+        let playerAngle = 0;
+        let playerHealth = 3;
+
+        function moveEnemies() {
+            if (gameOver) return;
+            enemies.forEach(enemy => {
+                const playerRect = player.getBoundingClientRect();
+                const enemyRect = enemy.getBoundingClientRect();
+                const dx = playerRect.left - enemyRect.left;
+                const dy = playerRect.top - enemyRect.top;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const moveX = (dx / distance) * 2;
+                const moveY = (dy / distance) * 2;
+
+                enemy.style.left = `${enemy.offsetLeft + moveX}px`;
+                enemy.style.top = `${enemy.offsetTop + moveY}px`;
+            });
+        }
+
+        function shootBullet() {
+            const bullet = document.createElement('div');
+            bullet.classList.add('bullet');
+            bullet.style.left = `${player.offsetLeft + 22.5}px`;
+            bullet.style.top = `${player.offsetTop + 22.5}px`;
+            game.appendChild(bullet);
+
+            const angleRad = (playerAngle - 90) * (Math.PI / 180);
+            const bulletSpeed = 10;
+            const interval = setInterval(() => {
+                bullet.style.left = `${parseInt(bullet.style.left) + bulletSpeed * Math.cos(angleRad)}px`;
+                bullet.style.top = `${parseInt(bullet.style.top) + bulletSpeed * Math.sin(angleRad)}px`;
+
+                if (bullet.offsetTop < 0 || bullet.offsetTop > window.innerHeight || bullet.offsetLeft < 0 || bullet.offsetLeft > window.innerWidth) {
+                    bullet.remove();
+                    clearInterval(interval);
+                } else {
+                    enemies.forEach(enemy => {
+                        if (bullet.getBoundingClientRect().left < enemy.getBoundingClientRect().right &&
+                            bullet.getBoundingClientRect().right > enemy.getBoundingClientRect().left &&
+                            bullet.getBoundingClientRect().top < enemy.getBoundingClientRect().bottom &&
+                            bullet.getBoundingClientRect().bottom > enemy.getBoundingClientRect().top) {
+                            enemy.remove();
+                            bullet.remove();
+                            clearInterval(interval);
+                            checkWin();
+                        }
+                    });
+                }
+            }, 30);
+        }
+
+        function checkCollision() {
+            if (gameOver) return;
+            const playerRect = player.getBoundingClientRect();
+            enemies.forEach(enemy => {
+                const enemyRect = enemy.getBoundingClientRect();
+                if (playerRect.left < enemyRect.right &&
+                    playerRect.right > enemyRect.left &&
+                    playerRect.top < enemyRect.bottom &&
+                    playerRect.bottom > enemyRect.top) {
+                    playerHealth -= 1;
+                    if (playerHealth <= 0) {
+                        gameOver = true;
+                        loseMessage.style.display = 'block';
+                        setTimeout(() => {
+                            loseMessage.style.display = 'none';
+                        }, 2000);
+                    }
+                }
+            });
+            structures.forEach(structure => {
+                const structureRect = structure.getBoundingClientRect();
+                if (playerRect.left < structureRect.right &&
+                    playerRect.right > structureRect.left &&
+                    playerRect.top < structureRect.bottom &&
+                    playerRect.bottom > structureRect.top) {
+                    if (keys['ArrowUp']) player.style.top = `${player.offsetTop + playerSpeed}px`;
+                    if (keys['ArrowDown']) player.style.top = `${player.offsetTop - playerSpeed}px`;
+                    if (keys['ArrowLeft']) player.style.left = `${player.offsetLeft + playerSpeed}px`;
+                    if (keys['ArrowRight']) player.style.left = `${player.offsetLeft - playerSpeed}px`;
+                }
+            });
+            if (playerRect.left < item.getBoundingClientRect().right &&
+                playerRect.right > item.getBoundingClientRect().left &&
+                playerRect.top < item.getBoundingClientRect().bottom &&
+                playerRect.bottom > item.getBoundingClientRect().top) {
+                playerHealth = 3;
+                item.remove();
+            }
+        }
+
+        function checkWin() {
+            if (document.querySelectorAll('.enemy').length === 0) {
+                gameOver = true;
+                winMessage.style.display = 'block';
+                setTimeout(() => {
+                    window.location.href = '5.html';
+                }, 2000);
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            const playerRect = player.getBoundingClientRect();
+            const centerX = playerRect.left + playerRect.width / 2;
+            const centerY = playerRect.top + playerRect.height / 2;
+            const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+            playerAngle = angle * (180 / Math.PI) + 90;
+            player.style.transform = `rotate(${playerAngle}deg)`;
+        });
+
+        function movePlayer() {
+            if (keys['ArrowUp']) {
+                player.style.top = `${player.offsetTop - playerSpeed}px`;
+            }
+            if (keys['ArrowDown']) {
+                player.style.top = `${player.offsetTop + playerSpeed}px`;
+            }
+            if (keys['ArrowLeft']) {
+                player.style.left = `${player.offsetLeft - playerSpeed}px`;
+            }
+            if (keys['ArrowRight']) {
+                player.style.left = `${player.offsetLeft + playerSpeed}px`;
+            }
+            if (keys['Space']) {
+                shootBullet();
+                keys['Space'] = false; // Prevents continuous shooting when holding down space
+            }
+        }
+
+        setInterval(moveEnemies, 30);
+        setInterval(checkCollision, 100);
+        setInterval(movePlayer, 30);
+    </script>
+</body>
+</html>
